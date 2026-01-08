@@ -1,8 +1,9 @@
 import { useAtomValue } from "jotai";
-import { Template } from "../components/template";
+import { Template } from "../components/Template";
 import { userNameState } from "../utils/globalState";
 import { getAllUsers } from "../utils/storage";
 import { useEffect, useState } from "react";
+import { AddUser } from "../components/screens";
 
 export function Home() {
   const user = useAtomValue(userNameState);
@@ -19,7 +20,7 @@ export function Home() {
   if (!users || users.length === 0) {
     return (
       <Template>
-        <div>Add button to add a user</div>
+        <AddUser />
       </Template>
     );
   }
