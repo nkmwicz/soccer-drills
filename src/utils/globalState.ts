@@ -1,9 +1,17 @@
 import { atom } from "jotai";
 
-export const userNameState = atom<{ id: string; name: string }>({
+export const usersState = atom<{ id: string; name: string }[]>([]);
+
+export const activeUserState = atom<{ id: string; name: string }>({
   id: "",
   name: "",
 });
+
+export const isChooseUserModalOpenState = atom<boolean>(false);
+
+export const userDrillState = atom<
+  { id: string; userId: string; drillId: string; dates: Date[] }[]
+>([]);
 
 export const pastDrillsState = atom<{ drillId: number; dates: Date[] }[]>([]);
 
