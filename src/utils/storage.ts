@@ -1,6 +1,8 @@
 // utils/storage.ts
+import { v4 as uuidv4 } from "uuid";
 const DB_NAME = "soccerDrillsDB";
-const STORE_NAME = "drills";
+const DRILLS_STORE = "drills";
+const USERS_STORE = "users";
 
 export const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
@@ -12,37 +14,38 @@ export const openDB = (): Promise<IDBDatabase> => {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
 
-      // Remove old store if it exists
-      if (db.objectStoreNames.contains("progress")) {
-        db.deleteObjectStore("progress");
-      }
-
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: "drillId" });
+      if (!db.objectStoreNames.contains(DRILLS_STORE)) {
+        const store = db.createObjectStore(DRILLS_STORE, {
+          keyPath: "drillId",
+        });
         store.createIndex("drillId", "drillId", { unique: true });
+      }
+      if (!db.objectStoreNames.contains(USERS_STORE)) {
+        const store = db.createObjectStore(USERS_STORE, { keyPath: "id" });
+        store.createIndex("name", "name", { unique: false });
       }
     };
   });
 };
 
-export const saveName = async (name: string) => {
+export const addUser = async (name: string) => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put({ date: "name", name });
+    const transaction = db.transaction(USERS_STORE, "readwrite");
+    const store = transaction.objectStore(USERS_STORE);
+    const request = store.add({ id: uuidv4(), name });
 
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 };
 
-export const getName = async (): Promise<string | null> => {
+export const getUser = async (id: string): Promise<string | null> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readonly");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get("name");
+    const transaction = db.transaction(USERS_STORE, "readonly");
+    const store = transaction.objectStore(USERS_STORE);
+    const request = store.get(id);
 
     request.onsuccess = () => {
       if (request.result) {
@@ -55,11 +58,27 @@ export const getName = async (): Promise<string | null> => {
   });
 };
 
+export const getAllUsers = async (): Promise<
+  { id: string; name: string }[]
+> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(USERS_STORE, "readonly");
+    const store = transaction.objectStore(USERS_STORE);
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      resolve(request.result || []);
+    };
+    request.onerror = () => reject(request.error);
+  });
+};
+
 export const saveDrillSession = async (drillId: string, datetime: Date) => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
+    const transaction = db.transaction(DRILLS_STORE, "readwrite");
+    const store = transaction.objectStore(DRILLS_STORE);
 
     // Get existing drill record
     const getRequest = store.get(drillId);
@@ -84,8 +103,8 @@ export const saveDrillSession = async (drillId: string, datetime: Date) => {
 export const getDrillSessions = async (drillId: string): Promise<Date[]> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readonly");
-    const store = transaction.objectStore(STORE_NAME);
+    const transaction = db.transaction(DRILLS_STORE, "readonly");
+    const store = transaction.objectStore(DRILLS_STORE);
     const request = store.get(drillId);
 
     request.onsuccess = () => {
@@ -104,21 +123,12 @@ export const getAllDrills = async (): Promise<
 > => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readonly");
-    const store = transaction.objectStore(STORE_NAME);
+    const transaction = db.transaction(DRILLS_STORE, "readonly");
+    const store = transaction.objectStore(DRILLS_STORE);
     const request = store.getAll();
 
     request.onsuccess = () => {
-      const allRecords = request.result || [];
-      // Only return records that have a dates property (actual drills)
-      const drillsOnly = allRecords.filter(
-        (record) => record.drillId !== undefined
-      );
-      if (drillsOnly.length === 0) {
-        resolve([]);
-        return;
-      }
-      resolve(drillsOnly);
+      resolve(request.result || []);
     };
     request.onerror = () => reject(request.error);
   });

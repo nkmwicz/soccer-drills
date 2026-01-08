@@ -1,6 +1,9 @@
 import { atom } from "jotai";
 
-export const userNameState = atom<string>("");
+export const userNameState = atom<{ id: string; name: string }>({
+  id: "",
+  name: "",
+});
 
 export const pastDrillsState = atom<{ drillId: number; dates: Date[] }[]>([]);
 
@@ -34,7 +37,6 @@ export const cruyffCroqueta = {
     "Start on the right cone, touch forward, Cruyff, stop the ball, La Croquetta to left cone, repeat.",
   type: "Two-Cone Mastery",
 };
-export const;
 
 export const selectedDrilltype = atom<string>("");
 
