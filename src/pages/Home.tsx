@@ -13,6 +13,7 @@ import { ChooseUserModal } from "../components/modals";
 export function Home() {
   const user = useAtomValue(activeUserState);
   const setIsChoosingUser = useSetAtom(isChooseUserModalOpenState);
+  const activeUser = useAtomValue(activeUserState);
   const [users, setUsers] = useAtom<{ id: string; name: string }[]>(usersState);
 
   useEffect(() => {
@@ -25,10 +26,10 @@ export function Home() {
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!activeUser.name) {
       setIsChoosingUser(true);
     }
-  }, [user, setIsChoosingUser]);
+  }, [activeUser, setIsChoosingUser]);
 
   if (!users || users.length === 0) {
     return (
