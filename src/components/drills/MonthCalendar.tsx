@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAtom } from "jotai";
 import { activeUserState } from "../../utils/globalState";
-import { getAllDrills } from "../../utils/storage";
 
 interface DrillSession {
   id: string;
@@ -10,22 +9,13 @@ interface DrillSession {
   dates: Date[];
 }
 
-export function MonthCalendar() {
-  const [activeUser] = useAtom(activeUserState);
+export function MonthCalendar({
+  drillSessions,
+}: {
+  drillSessions: DrillSession[];
+}) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [drillSessions, setDrillSessions] = useState<DrillSession[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
-  useEffect(() => {
-    if (activeUser.id) {
-      loadDrills();
-    }
-  }, [activeUser.id, currentDate]);
-
-  const loadDrills = async () => {
-    const drills = await getAllDrills(activeUser.id);
-    setDrillSessions(drills);
-  };
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();

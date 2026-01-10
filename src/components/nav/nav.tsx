@@ -13,14 +13,14 @@ export function Nav() {
   const setIsChaooseUserModalOpen = useSetAtom(isChooseUserModalOpenState);
   const activeUser = useAtomValue(activeUserState);
   return (
-    <div className="flex flex-row justify-between w-full gap-2 bg-primary p-4 text-white">
+    <div className="flex flex-row justify-between w-full gap-2 bg-primary p-4 text-Secondary">
       {activeUser.name ? (
         <H1>{activeUser.name}'s Drills</H1>
       ) : (
         <H1>Choose User</H1>
       )}
       <div className="flex flex-row gap-4">
-        <Button title="Workouts" onClick={handleWorkoutsClick} />
+        <Button title="Drills" onClick={handleWorkoutsClick} />
         {location.pathname === "/" && (
           <Button
             title={"Change User"}

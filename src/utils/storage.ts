@@ -6,24 +6,44 @@ const USERS_STORE = "users";
 
 export const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 3); // Increment version for schema change
+    const request = indexedDB.open(DB_NAME, 4); // Increment version to force upgrade
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
+      const transaction = (event.target as IDBOpenDBRequest).transaction!;
 
+      // Handle DRILLS_STORE
+      let drillStore: IDBObjectStore;
       if (!db.objectStoreNames.contains(DRILLS_STORE)) {
-        const store = db.createObjectStore(DRILLS_STORE, {
+        drillStore = db.createObjectStore(DRILLS_STORE, {
           keyPath: "id", // Composite key: userId-drillId
         });
-        store.createIndex("userId", "userId", { unique: false }); // Query by user
-        store.createIndex("drillId", "drillId", { unique: false });
+      } else {
+        drillStore = transaction.objectStore(DRILLS_STORE);
       }
+
+      // Create indexes if they don't exist
+      if (!drillStore.indexNames.contains("userId")) {
+        drillStore.createIndex("userId", "userId", { unique: false });
+      }
+      if (!drillStore.indexNames.contains("drillId")) {
+        drillStore.createIndex("drillId", "drillId", { unique: false });
+      }
+
+      // Handle USERS_STORE
+      let userStore: IDBObjectStore;
       if (!db.objectStoreNames.contains(USERS_STORE)) {
-        const store = db.createObjectStore(USERS_STORE, { keyPath: "id" });
-        store.createIndex("name", "name", { unique: false });
+        userStore = db.createObjectStore(USERS_STORE, { keyPath: "id" });
+      } else {
+        userStore = transaction.objectStore(USERS_STORE);
+      }
+
+      // Create index if it doesn't exist
+      if (!userStore.indexNames.contains("name")) {
+        userStore.createIndex("name", "name", { unique: false });
       }
     };
   });
