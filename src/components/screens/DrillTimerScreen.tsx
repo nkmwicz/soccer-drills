@@ -8,6 +8,7 @@ import {
 import { saveDrillSession } from "../../utils/storage";
 import { Button } from "../buttons/Button";
 import { useTimer } from "react-timer-hook";
+import { time } from "console";
 
 interface DrillTimerScreenProps {
   onComplete: () => void;
@@ -23,6 +24,7 @@ export function DrillTimerScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [isAutoStart, setIsAutoStart] = useState(false);
   const [progress, setProgress] = useState(0);
 
   // Calculate expiry time based on current seconds remaining
@@ -37,15 +39,13 @@ export function DrillTimerScreen() {
     const now = new Date();
 
     if (!activeRoutine) return;
+    console.log(
+      "Routine complete, saving drill session",
+      activeUser,
+      activeRoutine
+    );
     // Get all unique drill IDs from activeRoutine (excluding rest)
-    const drillIds = [
-      ...new Set(activeRoutine.steps.map((step: any) => step.drill.id)),
-    ].filter((id) => id !== -1);
-
-    // Save a session record for each drill completed
-    for (const drillId of drillIds) {
-      await saveDrillSession(activeUser.id, drillId.toString(), now);
-    }
+    await saveDrillSession(activeUser.id, activeRoutine.id.toString(), now);
     setIsComplete(true);
   };
 
@@ -59,7 +59,17 @@ export function DrillTimerScreen() {
     setCurrentStepIndex(nextIndex);
     // Restart timer for next step
     const nextStepMinutes = activeRoutine!.steps[nextIndex].minutes;
-    restart(getExpiryTimestamp(nextStepMinutes * 60), false);
+    console.log(
+      "Starting next step for",
+      nextStepMinutes,
+      "minutes",
+      nextIndex,
+      "of",
+      activeRoutine!.steps[nextIndex]
+    );
+    const time = new Date();
+    time.setSeconds(time.getSeconds() + nextStepMinutes * 60);
+    restart(time);
     start();
   };
 
@@ -74,9 +84,9 @@ export function DrillTimerScreen() {
     restart,
   } = useTimer({
     expiryTimestamp: getExpiryTimestamp(
-      activeRoutine ? activeRoutine.steps[0].minutes * 60 : 0
+      activeRoutine ? activeRoutine.steps[currentStepIndex].minutes * 60 : 0
     ),
-    autoStart: false,
+    autoStart: isAutoStart,
     onExpire: () => {
       handleTimerExpire();
     },
@@ -85,8 +95,8 @@ export function DrillTimerScreen() {
   useEffect(() => {
     if (isRunning && !isPaused && totalSeconds > 0 && totalSeconds <= 5) {
       const utterance = new SpeechSynthesisUtterance(totalSeconds.toString());
-      utterance.rate = 1.2; // Slightly faster
-      utterance.pitch = 1.2; // Higher pitch for urgency
+      utterance.rate = 1; // Slightly faster
+      utterance.pitch = 1; // Higher pitch for urgency
       window.speechSynthesis.speak(utterance);
     }
   }, [totalSeconds, isRunning, isPaused]);
@@ -94,16 +104,19 @@ export function DrillTimerScreen() {
   const handleStart = () => {
     start();
     setIsRunning(true);
+    setIsAutoStart(true);
   };
 
   const handlePause = () => {
     pause();
     setIsPaused(true);
+    setIsAutoStart(false);
   };
 
   const handleResume = () => {
     resume();
     setIsPaused(false);
+    setIsAutoStart(true);
   };
 
   if (!activeRoutine) {

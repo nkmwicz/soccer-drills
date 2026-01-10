@@ -2,6 +2,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Template } from "../components/Template";
 import {
   activeUserState,
+  isAddingUserState,
   isChooseUserModalOpenState,
   usersState,
 } from "../utils/globalState";
@@ -15,6 +16,7 @@ export function Home() {
   const setIsChoosingUser = useSetAtom(isChooseUserModalOpenState);
   const activeUser = useAtomValue(activeUserState);
   const [users, setUsers] = useAtom<{ id: string; name: string }[]>(usersState);
+  const [isAddingUser, setIsAddingUser] = useAtom(isAddingUserState);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -31,7 +33,7 @@ export function Home() {
     }
   }, [activeUser, setIsChoosingUser]);
 
-  if (!users || users.length === 0) {
+  if (!users || users.length === 0 || isAddingUser) {
     return (
       <Template>
         <AddUser />

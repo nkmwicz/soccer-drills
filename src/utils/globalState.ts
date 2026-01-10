@@ -8,6 +8,7 @@ export const activeUserState = atom<{ id: string; name: string }>({
 });
 
 export const isChooseUserModalOpenState = atom<boolean>(false);
+export const isAddingUserState = atom<boolean>(false);
 
 export const userDrillState = atom<
   { id: string; userId: string; drillId: string; dates: Date[] }[]

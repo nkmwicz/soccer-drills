@@ -5,18 +5,24 @@ import { TextInput } from "../elements/TextInput";
 import { Button } from "../buttons";
 import { addUser, getAllUsers } from "../../utils/storage";
 import { useAtom, useSetAtom } from "jotai";
-import { activeUserState, usersState } from "../../utils/globalState";
+import {
+  activeUserState,
+  isAddingUserState,
+  usersState,
+} from "../../utils/globalState";
 
 export function AddUser() {
   const [name, setName] = useState("");
   const [user, setUser] = useAtom(activeUserState);
   const setUsers = useSetAtom(usersState);
+  const setIsAddingUser = useSetAtom(isAddingUserState);
 
   const handleAddUser = async () => {
     const newUser = await addUser(name);
     const allUsers = await getAllUsers();
     setUsers(allUsers);
     const thisUser = allUsers.find((u) => u.id === newUser);
+    setIsAddingUser(false);
     if (thisUser) {
       setUser(thisUser);
     } else {
