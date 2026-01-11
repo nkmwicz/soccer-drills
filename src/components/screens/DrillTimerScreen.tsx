@@ -8,7 +8,6 @@ import {
 import { saveDrillSession } from "../../utils/storage";
 import { Button } from "../buttons/Button";
 import { useTimer } from "react-timer-hook";
-import { time } from "console";
 
 interface DrillTimerScreenProps {
   onComplete: () => void;
@@ -25,7 +24,20 @@ export function DrillTimerScreen() {
   const [isComplete, setIsComplete] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isAutoStart, setIsAutoStart] = useState(false);
-  const [progress, setProgress] = useState(0);
+
+  interface DrillTypes {
+    id: number;
+    title: string;
+    description: string;
+    type: string;
+  }
+  interface StepsTypes {
+    drill: DrillTypes;
+    minutes: number;
+  }
+  const [localSteps, setLocalSteps] = useState<StepsTypes[]>(
+    activeRoutine?.steps || []
+  );
 
   // Calculate expiry time based on current seconds remaining
   const getExpiryTimestamp = (seconds: number) => {
@@ -50,27 +62,13 @@ export function DrillTimerScreen() {
   };
 
   const handleTimerExpire = () => {
-    if (currentStepIndex + 1 == activeRoutine!.steps.length) {
+    if (!activeRoutine) return;
+    // Move to next step or complete routine
+    if (localSteps.length > 1) {
+      setLocalSteps((prev) => prev.slice(1));
+    } else {
       handleRoutineComplete();
-      return;
     }
-    // Move to next step
-    const nextIndex = currentStepIndex + 1;
-    setCurrentStepIndex(nextIndex);
-    // Restart timer for next step
-    const nextStepMinutes = activeRoutine!.steps[nextIndex].minutes;
-    console.log(
-      "Starting next step for",
-      nextStepMinutes,
-      "minutes",
-      nextIndex,
-      "of",
-      activeRoutine!.steps[nextIndex]
-    );
-    const time = new Date();
-    time.setSeconds(time.getSeconds() + nextStepMinutes * 60);
-    restart(time);
-    start();
   };
 
   const {
@@ -84,7 +82,7 @@ export function DrillTimerScreen() {
     restart,
   } = useTimer({
     expiryTimestamp: getExpiryTimestamp(
-      activeRoutine ? activeRoutine.steps[currentStepIndex].minutes * 60 : 0
+      localSteps.length > 0 ? localSteps[0].minutes * 60 : 0
     ),
     autoStart: isAutoStart,
     onExpire: () => {
@@ -99,7 +97,62 @@ export function DrillTimerScreen() {
       utterance.pitch = 1; // Higher pitch for urgency
       window.speechSynthesis.speak(utterance);
     }
-  }, [totalSeconds, isRunning, isPaused]);
+    if (
+      isRunning &&
+      !isPaused &&
+      totalSeconds % 60 === 0 &&
+      totalSeconds > 0 &&
+      totalSeconds !== localSteps[0].minutes * 60
+    ) {
+      const minutesLeft = totalSeconds / 60;
+      const utterance = new SpeechSynthesisUtterance(
+        `${minutesLeft} minute${minutesLeft > 1 ? "s" : ""} remaining`
+      );
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+    // Announce drill start
+    if (
+      isRunning &&
+      !isPaused &&
+      totalSeconds &&
+      localSteps[0].drill.title === "Rest" &&
+      totalSeconds === localSteps[0].minutes * 60
+    ) {
+      const utterance = new SpeechSynthesisUtterance(
+        `Rest for ${localSteps[0].minutes} minute${
+          localSteps[0].minutes > 1 ? "s" : ""
+        }`
+      );
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+    if (
+      isRunning &&
+      !isPaused &&
+      totalSeconds === 10 &&
+      localSteps[0].drill.title === "Rest" &&
+      localSteps.length > 1
+    ) {
+      const utterance = new SpeechSynthesisUtterance(
+        `Prepare for ${localSteps[1].drill.title}`
+      );
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    if (isComplete) {
+      const utterance = new SpeechSynthesisUtterance(
+        `Routine complete. Well done!`
+      );
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+  }, [totalSeconds, isRunning, isPaused, localSteps, isComplete]);
 
   const handleStart = () => {
     start();
@@ -119,9 +172,25 @@ export function DrillTimerScreen() {
     setIsAutoStart(true);
   };
 
+  useEffect(() => {
+    const step = localSteps[0];
+    const minutes = step ? step.minutes : 0;
+    const time = new Date();
+    time.setSeconds(time.getSeconds() + minutes * 60);
+    restart(time, isRunning);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localSteps]);
+
   if (!activeRoutine) {
     return <div>Loading routine...</div>;
   }
+
+  // Calculate progress - derived from other state, no need for useState
+  const totalDrillSeconds =
+    activeRoutine.steps[currentStepIndex].minutes * 60 || 0;
+  const elapsedSeconds = totalDrillSeconds - totalSeconds;
+  const progress =
+    totalDrillSeconds > 0 ? (elapsedSeconds / totalDrillSeconds) * 100 : 0;
 
   // Use timer values for display
   const displayMinutes = timerMinutes;
@@ -136,9 +205,9 @@ export function DrillTimerScreen() {
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full bg-gray-200 rounded-full h-4">
+      <div className="w-full bg-gray-200 rounded-full h-4 border border-black z-20">
         <div
-          className="bg-primary h-4 rounded-full transition-all duration-300"
+          className="bg-primary h-4 rounded-full transition-all duration-300 z-10"
           style={{ width: `${progress}%` }}
         ></div>
       </div>
@@ -146,14 +215,11 @@ export function DrillTimerScreen() {
       {/* Current Drill */}
       <div className="bg-white p-8 rounded-lg shadow-lg text-center space-y-4">
         <div className="text-sm text-gray-500">
-          Step {currentStepIndex + 1} of {activeRoutine.steps.length}
+          Step {activeRoutine.steps.length + 1 - localSteps.length} of{" "}
+          {activeRoutine.steps.length}
         </div>
-        <h2 className="text-4xl font-bold">
-          {activeRoutine.steps[currentStepIndex].drill.title}
-        </h2>
-        <p className="text-gray-600">
-          {activeRoutine.steps[currentStepIndex].drill.description}
-        </p>
+        <h2 className="text-4xl font-bold">{localSteps[0].drill.title}</h2>
+        <p className="text-gray-600">{localSteps[0].drill.description}</p>
 
         {/* Timer Display */}
         <div className="text-8xl font-bold text-primary my-8">
